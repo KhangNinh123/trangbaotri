@@ -69,6 +69,20 @@
             color: white;
         }
 
+        .fps-counter {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            font-size: 1em;
+            font-weight: bold;
+            color: #00ff00;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            z-index: 10;
+            background: rgba(0,0,0,0.5);
+            padding: 5px 10px;
+            border-radius: 5px;
+        }
+
         .instructions {
             position: absolute;
             bottom: 30px;
@@ -186,6 +200,7 @@
 </head>
 <body>
     <div class="game-container">
+        <div class="fps-counter" id="fpsCounter">FPS: 60</div>
         <div class="score">Điểm: <span id="score">0</span></div>
         <canvas id="gameCanvas" width="400" height="600"></canvas>
         
@@ -218,6 +233,11 @@
         const highScoreElement = document.getElementById('highScore');
         const startScreen = document.getElementById('startScreen');
         const gameOverScreen = document.getElementById('gameOverScreen');
+        const fpsCounter = document.getElementById('fpsCounter');
+
+        // FPS tracking
+        let fpsFrames = [];
+        let lastFpsUpdate = 0;
 
         // Khai báo biến trước để tránh lỗi initialization
         let bgGradient = null;
@@ -365,6 +385,19 @@
         function update(currentTime) {
             if (!gameRunning) return;
 
+            // Tính FPS
+            fpsFrames.push(currentTime);
+            while (fpsFrames.length > 0 && fpsFrames[0] <= currentTime - 1000) {
+                fpsFrames.shift();
+            }
+            
+            if (currentTime - lastFpsUpdate > 200) {
+                const fps = fpsFrames.length;
+                fpsCounter.textContent = `FPS: ${fps}`;
+                fpsCounter.style.color = fps >= 50 ? '#00ff00' : fps >= 30 ? '#ffff00' : '#ff0000';
+                lastFpsUpdate = currentTime;
+            }
+
             // Throttle FPS để tránh lag trên mobile
             if (currentTime - lastFrameTime < frameInterval) {
                 gameLoop = requestAnimationFrame(update);
@@ -436,23 +469,8 @@
         }
 
         function createExplosion(x, y) {
-            // Giảm mạnh số lượng particle trên mobile
-            const isMobile = window.innerWidth < 768;
-            const particleCount = isMobile ? 8 : 30;
-            const particleLife = isMobile ? 40 : 60;
-            
-            for (let i = 0; i < particleCount; i++) {
-                explosions.push({
-                    x: x,
-                    y: y,
-                    vx: (Math.random() - 0.5) * 10,
-                    vy: (Math.random() - 0.5) * 10,
-                    life: particleLife,
-                    maxLife: particleLife,
-                    size: Math.random() * 8 + 4,
-                    color: ['#FF6B6B', '#FFD93D', '#FF8C42', '#FFA500'][Math.floor(Math.random() * 4)]
-                });
-            }
+            // Bỏ hiệu ứng nổ để tăng hiệu suất
+            return;
         }
 
         function updateExplosions() {
