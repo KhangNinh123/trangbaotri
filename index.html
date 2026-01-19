@@ -210,6 +210,7 @@
     </div>
 
     <script>
+        // Optimized for mobile - v2.0
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
         const scoreElement = document.getElementById('score');
@@ -218,26 +219,16 @@
         const startScreen = document.getElementById('startScreen');
         const gameOverScreen = document.getElementById('gameOverScreen');
 
-        function resizeCanvas() {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-            
-            // Giảm độ phân giải trên mobile để tăng hiệu suất
-            if (window.innerWidth < 768) {
-                const scale = window.devicePixelRatio || 1;
-                canvas.width = window.innerWidth * 0.8;
-                canvas.height = window.innerHeight * 0.8;
-                canvas.style.width = window.innerWidth + 'px';
-                canvas.style.height = window.innerHeight + 'px';
-            }
-        }
-
-        window.addEventListener('resize', resizeCanvas);
-        resizeCanvas();
+        // Khai báo biến trước để tránh lỗi initialization
+        let bgGradient = null;
+        let buildingGradients = new Map();
+        let lastFrameTime = 0;
+        const targetFPS = 60;
+        const frameInterval = 1000 / targetFPS;
 
         let cat = {
             x: 150,
-            y: canvas.height / 2,
+            y: 300,
             width: 80,
             height: 80,
             velocity: 0,
@@ -259,6 +250,39 @@
         let frameCount = 0;
 
         highScoreElement.textContent = highScore;
+
+        function resizeCanvas() {
+            const width = window.innerWidth;
+            const height = window.innerHeight;
+            
+            // Tối ưu resolution cho mobile - dùng 1:1 thay vì retina
+            const isMobile = width < 768;
+            
+            if (isMobile) {
+                // Mobile: dùng resolution thấp hơn để tăng FPS
+                canvas.width = width;
+                canvas.height = height;
+            } else {
+                // Desktop: dùng full resolution
+                canvas.width = width;
+                canvas.height = height;
+            }
+            
+            canvas.style.width = width + 'px';
+            canvas.style.height = height + 'px';
+            
+            // Reset gradient cache khi resize
+            bgGradient = null;
+            buildingGradients.clear();
+            
+            // Cập nhật vị trí cat nếu chưa bắt đầu game
+            if (!gameRunning) {
+                cat.y = canvas.height / 2;
+            }
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
 
         // Tạo mây ban đầu - ít hơn trên mobile
         const cloudCount = window.innerWidth < 768 ? 4 : 8;
@@ -312,6 +336,25 @@
             frameCount = 0;
             scoreElement.textContent = score;
             gameRunning = true;
+            
+            // Tạo cột đầu tiên ngay lập tức
+            const gap = 280;
+            const minHeight = 80;
+            const maxHeight = canvas.height - gap - minHeight;
+            const pipeHeight = Math.floor(Math.random() * maxHeight) + minHeight;
+            
+            // Mobile: cột xa hơn để có thời gian chuẩn bị
+            const isMobile = window.innerWidth < 768;
+            const startPosition = isMobile ? canvas.width * 0.85 : canvas.width * 0.75;
+            
+            pipes.push({
+                x: startPosition,
+                top: pipeHeight,
+                bottom: pipeHeight + gap,
+                width: 80,
+                passed: false
+            });
+            
             gameLoop = requestAnimationFrame(update);
         }
 
@@ -319,8 +362,15 @@
             startGame();
         }
 
-        function update() {
+        function update(currentTime) {
             if (!gameRunning) return;
+
+            // Throttle FPS để tránh lag trên mobile
+            if (currentTime - lastFrameTime < frameInterval) {
+                gameLoop = requestAnimationFrame(update);
+                return;
+            }
+            lastFrameTime = currentTime;
 
             frameCount++;
             ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -330,7 +380,7 @@
             cat.velocity += cat.gravity;
             cat.y += cat.velocity;
 
-            if (frameCount % 180 === 0) {
+            if (frameCount % 150 === 0) {
                 const gap = 280;
                 const minHeight = 80;
                 const maxHeight = canvas.height - gap - minHeight;
@@ -386,16 +436,19 @@
         }
 
         function createExplosion(x, y) {
-            // Giảm số lượng particle nổ trên mobile
-            const particleCount = window.innerWidth < 768 ? 15 : 30;
+            // Giảm mạnh số lượng particle trên mobile
+            const isMobile = window.innerWidth < 768;
+            const particleCount = isMobile ? 8 : 30;
+            const particleLife = isMobile ? 40 : 60;
+            
             for (let i = 0; i < particleCount; i++) {
                 explosions.push({
                     x: x,
                     y: y,
                     vx: (Math.random() - 0.5) * 10,
                     vy: (Math.random() - 0.5) * 10,
-                    life: 60,
-                    maxLife: 60,
+                    life: particleLife,
+                    maxLife: particleLife,
                     size: Math.random() * 8 + 4,
                     color: ['#FF6B6B', '#FFD93D', '#FF8C42', '#FFA500'][Math.floor(Math.random() * 4)]
                 });
@@ -428,10 +481,13 @@
         }
 
         function drawBackground() {
-            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-            gradient.addColorStop(0, '#87CEEB');
-            gradient.addColorStop(1, '#E0F6FF');
-            ctx.fillStyle = gradient;
+            // Chỉ tạo gradient 1 lần, sau đó dùng lại
+            if (!bgGradient) {
+                bgGradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+                bgGradient.addColorStop(0, '#87CEEB');
+                bgGradient.addColorStop(1, '#E0F6FF');
+            }
+            ctx.fillStyle = bgGradient;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
             // Vẽ mây
@@ -439,6 +495,8 @@
         }
 
         function drawClouds() {
+            const isMobile = window.innerWidth < 768;
+            
             ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
             for (let cloud of clouds) {
                 // Di chuyển mây
@@ -448,26 +506,36 @@
                     cloud.y = Math.random() * canvas.height * 0.4;
                 }
 
-                // Vẽ mây (3 hình tròn tạo thành mây)
-                ctx.beginPath();
-                ctx.arc(cloud.x, cloud.y, cloud.height * 0.6, 0, Math.PI * 2);
-                ctx.arc(cloud.x + cloud.width * 0.4, cloud.y - cloud.height * 0.2, cloud.height * 0.7, 0, Math.PI * 2);
-                ctx.arc(cloud.x + cloud.width * 0.7, cloud.y, cloud.height * 0.6, 0, Math.PI * 2);
-                ctx.fill();
+                // Vẽ mây đơn giản hơn trên mobile (1 ellipse thay vì 3 arc)
+                if (isMobile) {
+                    ctx.beginPath();
+                    ctx.ellipse(cloud.x + cloud.width/2, cloud.y, cloud.width/2, cloud.height/2, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                } else {
+                    // Desktop: vẽ đẹp hơn với 3 hình tròn
+                    ctx.beginPath();
+                    ctx.arc(cloud.x, cloud.y, cloud.height * 0.6, 0, Math.PI * 2);
+                    ctx.arc(cloud.x + cloud.width * 0.4, cloud.y - cloud.height * 0.2, cloud.height * 0.7, 0, Math.PI * 2);
+                    ctx.arc(cloud.x + cloud.width * 0.7, cloud.y, cloud.height * 0.6, 0, Math.PI * 2);
+                    ctx.fill();
+                }
             }
         }
 
         function createSmoke() {
-            // Giảm số lượng khói trên mobile
-            const smokeCount = window.innerWidth < 768 ? 3 : 5;
+            // Giảm mạnh khói trên mobile
+            const isMobile = window.innerWidth < 768;
+            const smokeCount = isMobile ? 2 : 5;
+            const smokeLife = isMobile ? 20 : 30;
+            
             for (let i = 0; i < smokeCount; i++) {
                 smoke.push({
                     x: cat.x - 10,
                     y: cat.y + cat.height / 2 + (Math.random() - 0.5) * 20,
                     vx: -2 - Math.random() * 2,
                     vy: (Math.random() - 0.5) * 2,
-                    life: 30,
-                    maxLife: 30,
+                    life: smokeLife,
+                    maxLife: smokeLife,
                     size: 8 + Math.random() * 8
                 });
             }
@@ -518,45 +586,54 @@
         }
 
         function drawBuilding(x, y, width, height, pipe) {
-            // Thân tòa nhà
-            const gradient = ctx.createLinearGradient(x, y, x + width, y);
-            gradient.addColorStop(0, '#5D5D5D');
-            gradient.addColorStop(0.5, '#7D7D7D');
-            gradient.addColorStop(1, '#5D5D5D');
+            // Thân tòa nhà - cache gradient theo width
+            const gradientKey = width;
+            if (!buildingGradients.has(gradientKey)) {
+                const gradient = ctx.createLinearGradient(0, 0, width, 0);
+                gradient.addColorStop(0, '#5D5D5D');
+                gradient.addColorStop(0.5, '#7D7D7D');
+                gradient.addColorStop(1, '#5D5D5D');
+                buildingGradients.set(gradientKey, gradient);
+            }
             
-            ctx.fillStyle = gradient;
-            ctx.fillRect(x, y, width, height);
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.fillStyle = buildingGradients.get(gradientKey);
+            ctx.fillRect(0, 0, width, height);
 
             // Viền tòa nhà
             ctx.strokeStyle = '#3D3D3D';
             ctx.lineWidth = 2;
-            ctx.strokeRect(x, y, width, height);
+            ctx.strokeRect(0, 0, width, height);
 
-            // Vẽ cửa sổ - ít hơn trên mobile để tăng hiệu suất
-            const isMobile = window.innerWidth < 768;
-            if (!isMobile || frameCount % 2 === 0) {
-                ctx.fillStyle = '#FFD93D';
-                const windowWidth = 8;
-                const windowHeight = 10;
-                const windowSpacingX = isMobile ? 20 : 15;
-                const windowSpacingY = isMobile ? 20 : 15;
-                
-                for (let wx = x + 10; wx < x + width - 10; wx += windowSpacingX) {
-                    for (let wy = y + 10; wy < y + height - 10; wy += windowSpacingY) {
-                        if (Math.random() > 0.3) {
-                            ctx.fillRect(wx, wy, windowWidth, windowHeight);
-                        }
-                    }
+            // Vẽ cửa sổ - 4 cột đầy đủ
+            ctx.fillStyle = '#FFD93D';
+            const windowWidth = 8;
+            const windowHeight = 10;
+            const windowSpacingX = 18;
+            const windowSpacingY = 18;
+            
+            // Tính để có 4 cột cửa sổ
+            const startX = (width - (4 * windowWidth + 3 * (windowSpacingX - windowWidth))) / 2;
+            
+            for (let col = 0; col < 4; col++) {
+                const wx = startX + col * windowSpacingX;
+                for (let wy = 10; wy < height - 10; wy += windowSpacingY) {
+                    ctx.fillRect(wx, wy, windowWidth, windowHeight);
                 }
             }
 
             // Mái nhà
             ctx.fillStyle = '#4D4D4D';
             if (y === 0) {
-                ctx.fillRect(x - 5, pipe.top - 20, width + 10, 20);
+                // Tòa nhà trên - mái ở dưới
+                ctx.fillRect(-5, height, width + 10, 20);
             } else {
-                ctx.fillRect(x - 5, y, width + 10, 20);
+                // Tòa nhà dưới - mái ở trên
+                ctx.fillRect(-5, 0, width + 10, 20);
             }
+            
+            ctx.restore();
         }
 
         function checkCollision(cat, pipe) {
