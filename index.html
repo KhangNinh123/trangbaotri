@@ -615,6 +615,16 @@
             drawBackground();
             drawCat();
         };
+
+        // Preload image
+        catImage.onerror = function() {
+            console.warn('Failed to load cat image');
+        };
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            if (gameLoop) cancelAnimationFrame(gameLoop);
+        });
     </script>
 </body>
 </html>
