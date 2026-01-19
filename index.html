@@ -2,7 +2,7 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -30,6 +30,11 @@
             -webkit-touch-callout: none;
             -webkit-user-select: none;
             user-select: none;
+            /* Safe area cho iPhone tai thỏ */
+            padding-top: env(safe-area-inset-top);
+            padding-bottom: env(safe-area-inset-bottom);
+            padding-left: env(safe-area-inset-left);
+            padding-right: env(safe-area-inset-right);
         }
 
         .game-container {
@@ -58,7 +63,7 @@
 
         .score {
             position: absolute;
-            top: 30px;
+            top: max(30px, calc(env(safe-area-inset-top) + 10px));
             left: 50%;
             transform: translateX(-50%);
             font-size: 3em;
@@ -71,8 +76,8 @@
 
         .fps-counter {
             position: absolute;
-            top: 10px;
-            right: 10px;
+            top: max(10px, env(safe-area-inset-top));
+            right: max(10px, env(safe-area-inset-right));
             font-size: 1em;
             font-weight: bold;
             color: #00ff00;
@@ -85,7 +90,7 @@
 
         .instructions {
             position: absolute;
-            bottom: 30px;
+            bottom: max(30px, calc(env(safe-area-inset-bottom) + 10px));
             left: 50%;
             transform: translateX(-50%);
             font-size: 1.3em;
