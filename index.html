@@ -211,28 +211,31 @@
 
     <script>
         const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
+        const ctx = canvas.getContext('2d', { alpha: false, desynchronized: true });
         const scoreElement = document.getElementById('score');
         const finalScoreElement = document.getElementById('finalScore');
         const highScoreElement = document.getElementById('highScore');
         const startScreen = document.getElementById('startScreen');
         const gameOverScreen = document.getElementById('gameOverScreen');
 
+        // Detect mobile
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        const isLowEnd = isMobile && (navigator.hardwareConcurrency <= 4 || navigator.deviceMemory <= 2);
+
         function resizeCanvas() {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-            
-            // Giảm độ phân giải trên mobile để tăng hiệu suất
-            if (window.innerWidth < 768) {
-                const scale = window.devicePixelRatio || 1;
-                canvas.width = window.innerWidth * 0.8;
-                canvas.height = window.innerHeight * 0.8;
-                canvas.style.width = window.innerWidth + 'px';
-                canvas.style.height = window.innerHeight + 'px';
-            }
+            const dpr = isMobile ? Math.min(window.devicePixelRatio, 2) : window.devicePixelRatio;
+            canvas.width = window.innerWidth * dpr;
+            canvas.height = window.innerHeight * dpr;
+            canvas.style.width = window.innerWidth + 'px';
+            canvas.style.height = window.innerHeight + 'px';
+            ctx.scale(dpr, dpr);
         }
 
-        window.addEventListener('resize', resizeCanvas);
+        let resizeTimeout;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(resizeCanvas, 100);
+        });
         resizeCanvas();
 
         let cat = {
@@ -253,34 +256,50 @@
         let smoke = [];
         let clouds = [];
         let score = 0;
-        let highScore = localStorage.getItem('flappyCatHighScore') || 0;
+        let highScore = 0;
+        try {
+            highScore = localStorage.getItem('flappyCatHighScore') || 0;
+        } catch(e) {}
         let gameRunning = false;
         let gameLoop;
         let frameCount = 0;
+        let lastFrameTime = 0;
+        const targetFPS = isMobile ? 60 : 60;
+        const frameDelay = 1000 / targetFPS;
 
         highScoreElement.textContent = highScore;
 
-        // Tạo mây ban đầu - ít hơn trên mobile
-        const cloudCount = window.innerWidth < 768 ? 4 : 8;
+        // Tối ưu số lượng effects dựa trên device
+        const cloudCount = isLowEnd ? 3 : (isMobile ? 4 : 8);
+        const maxParticles = isLowEnd ? 8 : (isMobile ? 12 : 30);
+        const maxSmoke = isLowEnd ? 2 : (isMobile ? 3 : 5);
+        
         for (let i = 0; i < cloudCount; i++) {
             clouds.push({
-                x: Math.random() * canvas.width,
-                y: Math.random() * canvas.height * 0.4,
+                x: Math.random() * window.innerWidth,
+                y: Math.random() * window.innerHeight * 0.4,
                 width: 60 + Math.random() * 40,
                 height: 30 + Math.random() * 20,
                 speed: 0.3 + Math.random() * 0.5
             });
         }
 
+        let lastTouchTime = 0;
+        const touchThrottle = 100;
+
         canvas.addEventListener('click', jump);
         canvas.addEventListener('touchstart', (e) => {
             e.preventDefault();
+            const now = Date.now();
+            if (now - lastTouchTime < touchThrottle) return;
+            lastTouchTime = now;
+            
             if (!gameRunning && startScreen.style.display !== 'none') {
                 startGame();
             } else {
                 jump();
             }
-        });
+        }, { passive: false });
         
         document.addEventListener('keydown', (e) => {
             if (e.code === 'Space') {
@@ -319,11 +338,18 @@
             startGame();
         }
 
-        function update() {
+        function update(currentTime) {
             if (!gameRunning) return;
 
+            // Frame rate limiting
+            if (currentTime - lastFrameTime < frameDelay) {
+                gameLoop = requestAnimationFrame(update);
+                return;
+            }
+            lastFrameTime = currentTime;
+
             frameCount++;
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
 
             drawBackground();
 
@@ -367,8 +393,8 @@
                 }
             }
 
-            if (cat.y + cat.height > canvas.height) {
-                cat.y = canvas.height - cat.height;
+            if (cat.y + cat.height > window.innerHeight) {
+                cat.y = window.innerHeight - cat.height;
                 cat.velocity = 0;
             }
             if (cat.y < 0) {
@@ -378,6 +404,8 @@
 
             updateExplosions();
             updateSmoke();
+            
+            // Batch draw operations
             drawExplosions();
             drawSmoke();
             drawCat();
@@ -386,9 +414,7 @@
         }
 
         function createExplosion(x, y) {
-            // Giảm số lượng particle nổ trên mobile
-            const particleCount = window.innerWidth < 768 ? 15 : 30;
-            for (let i = 0; i < particleCount; i++) {
+            for (let i = 0; i < maxParticles; i++) {
                 explosions.push({
                     x: x,
                     y: y,
@@ -427,40 +453,44 @@
             }
         }
 
+        // Cache gradient
+        let bgGradient = null;
         function drawBackground() {
-            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-            gradient.addColorStop(0, '#87CEEB');
-            gradient.addColorStop(1, '#E0F6FF');
-            ctx.fillStyle = gradient;
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            if (!bgGradient) {
+                bgGradient = ctx.createLinearGradient(0, 0, 0, window.innerHeight);
+                bgGradient.addColorStop(0, '#87CEEB');
+                bgGradient.addColorStop(1, '#E0F6FF');
+            }
+            ctx.fillStyle = bgGradient;
+            ctx.fillRect(0, 0, window.innerWidth, window.innerHeight);
 
-            // Vẽ mây
-            drawClouds();
+            // Vẽ mây (skip trên low-end devices nếu có quá nhiều particles)
+            if (!isLowEnd || explosions.length < 10) {
+                drawClouds();
+            }
         }
 
         function drawClouds() {
             ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+            ctx.beginPath();
             for (let cloud of clouds) {
                 // Di chuyển mây
                 cloud.x -= cloud.speed;
                 if (cloud.x + cloud.width < 0) {
-                    cloud.x = canvas.width;
-                    cloud.y = Math.random() * canvas.height * 0.4;
+                    cloud.x = window.innerWidth;
+                    cloud.y = Math.random() * window.innerHeight * 0.4;
                 }
 
                 // Vẽ mây (3 hình tròn tạo thành mây)
-                ctx.beginPath();
                 ctx.arc(cloud.x, cloud.y, cloud.height * 0.6, 0, Math.PI * 2);
                 ctx.arc(cloud.x + cloud.width * 0.4, cloud.y - cloud.height * 0.2, cloud.height * 0.7, 0, Math.PI * 2);
                 ctx.arc(cloud.x + cloud.width * 0.7, cloud.y, cloud.height * 0.6, 0, Math.PI * 2);
-                ctx.fill();
             }
+            ctx.fill();
         }
 
         function createSmoke() {
-            // Giảm số lượng khói trên mobile
-            const smokeCount = window.innerWidth < 768 ? 3 : 5;
-            for (let i = 0; i < smokeCount; i++) {
+            for (let i = 0; i < maxSmoke; i++) {
                 smoke.push({
                     x: cat.x - 10,
                     y: cat.y + cat.height / 2 + (Math.random() - 0.5) * 20,
@@ -532,20 +562,17 @@
             ctx.lineWidth = 2;
             ctx.strokeRect(x, y, width, height);
 
-            // Vẽ cửa sổ - ít hơn trên mobile để tăng hiệu suất
-            const isMobile = window.innerWidth < 768;
-            if (!isMobile || frameCount % 2 === 0) {
-                ctx.fillStyle = '#FFD93D';
-                const windowWidth = 8;
-                const windowHeight = 10;
-                const windowSpacingX = isMobile ? 20 : 15;
-                const windowSpacingY = isMobile ? 20 : 15;
-                
-                for (let wx = x + 10; wx < x + width - 10; wx += windowSpacingX) {
-                    for (let wy = y + 10; wy < y + height - 10; wy += windowSpacingY) {
-                        if (Math.random() > 0.3) {
-                            ctx.fillRect(wx, wy, windowWidth, windowHeight);
-                        }
+            // Vẽ cửa sổ
+            ctx.fillStyle = '#FFD93D';
+            const windowWidth = 8;
+            const windowHeight = 10;
+            const windowSpacingX = 15;
+            const windowSpacingY = 15;
+            
+            for (let wx = x + 10; wx < x + width - 10; wx += windowSpacingX) {
+                for (let wy = y + 10; wy < y + height - 10; wy += windowSpacingY) {
+                    if (Math.random() > 0.3) {
+                        ctx.fillRect(wx, wy, windowWidth, windowHeight);
                     }
                 }
             }
@@ -574,7 +601,9 @@
             
             if (score > highScore) {
                 highScore = score;
-                localStorage.setItem('flappyCatHighScore', highScore);
+                try {
+                    localStorage.setItem('flappyCatHighScore', highScore);
+                } catch(e) {}
                 highScoreElement.textContent = highScore;
             }
             
