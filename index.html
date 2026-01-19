@@ -398,13 +398,6 @@
                 lastFpsUpdate = currentTime;
             }
 
-            // Throttle FPS để tránh lag trên mobile
-            if (currentTime - lastFrameTime < frameInterval) {
-                gameLoop = requestAnimationFrame(update);
-                return;
-            }
-            lastFrameTime = currentTime;
-
             frameCount++;
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
