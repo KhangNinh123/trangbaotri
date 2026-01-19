@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Flappy Cat - Website đang bảo trì</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #87CEEB;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            color: white;
+            overflow: hidden;
+            margin: 0;
+            padding: 0;
+            touch-action: none;
+            -webkit-tap-highlight-color: transparent;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        .game-container {
+            background: transparent;
+            border-radius: 0;
+            padding: 0;
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        canvas {
+            background: linear-gradient(180deg, #87CEEB 0%, #E0F6FF 100%);
+            border-radius: 0;
+            display: block;
+            box-shadow: none;
+            cursor: pointer;
+            width: 100vw;
+            height: 100vh;
+            touch-action: none;
+        }
+
+        .score {
+            position: absolute;
+            top: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 3em;
+            margin: 0;
+            font-weight: bold;
+            text-shadow: 3px 3px 6px rgba(0,0,0,0.5);
+            z-index: 5;
+            color: white;
+        }
+
+        .instructions {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 1.3em;
+            opacity: 0.9;
+            z-index: 5;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+
+        .start-screen, .game-over-screen {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.85);
+            padding: 40px 50px;
+            border-radius: 20px;
+            text-align: center;
+            z-index: 100;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+        }
+
+        .start-screen {
+            display: block;
+        }
+
+        .game-over-screen {
+            display: none;
+        }
+
+        .btn {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 1.2em;
+            border-radius: 25px;
+            cursor: pointer;
+            margin-top: 15px;
+            transition: all 0.3s;
+            font-weight: bold;
+        }
+
+        .btn:hover {
+            background: #45a049;
+            transform: scale(1.05);
+        }
+
+        .high-score {
+            font-size: 1em;
+            margin-top: 10px;
+            opacity: 0.8;
+        }
+
+        @media (max-width: 768px) {
+            .score {
+                font-size: 2.5em;
+                top: 20px;
+            }
+
+            .instructions {
+                font-size: 1em;
+                bottom: 20px;
+            }
+
+            .start-screen, .game-over-screen {
+                padding: 30px 25px;
+                max-width: 90%;
+            }
+
+            .start-screen h2, .game-over-screen h2 {
+                font-size: 1.8em !important;
+            }
+
+            .start-screen h3 {
+                font-size: 1.5em !important;
+            }
+
+            .start-screen p, .game-over-screen p {
+                font-size: 0.9em !important;
+            }
+
+            .btn {
+                padding: 12px 30px;
+                font-size: 1em;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .score {
+                font-size: 2em;
+                top: 15px;
+            }
+
+            .instructions {
+                font-size: 0.9em;
+                bottom: 15px;
+            }
+
+            .start-screen, .game-over-screen {
+                padding: 20px 15px;
+            }
+
+            .start-screen h2, .game-over-screen h2 {
+                font-size: 1.5em !important;
+            }
+
+            .start-screen h3 {
+                font-size: 1.3em !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div class="score">Điểm: <span id="score">0</span></div>
+        <canvas id="gameCanvas" width="400" height="600"></canvas>
+        
+        <div class="start-screen" id="startScreen">
+            <h2 style="font-size: 2.5em; margin-bottom: 10px;">🔧 Website đang bảo trì</h2>
+            <p style="font-size: 1.1em; margin-bottom: 20px; opacity: 0.9;">Chúng tôi sẽ quay lại sớm! Chơi game trong lúc chờ đợi nhé 😊</p>
+            <h3 style="font-size: 2em; margin-bottom: 15px;">🐱 Flappy Cat</h3>
+            <p style="font-size: 1em; margin-bottom: 10px;">Chạm màn hình hoặc nhấn Space để bay!</p>
+            <button class="btn" onclick="startGame()">Bắt đầu chơi</button>
+        </div>
+        
+        <div class="game-over-screen" id="gameOverScreen">
+            <h2 style="font-size: 2em; margin-bottom: 15px;">Game Over!</h2>
+            <p style="font-size: 1.3em; margin-bottom: 10px;">Điểm: <span id="finalScore">0</span></p>
+            <p class="high-score">Điểm cao nhất: <span id="highScore">0</span></p>
+            <button class="btn" onclick="restartGame()">Chơi lại</button>
+        </div>
+        
+        <div class="instructions">
+            💡 Chạm màn hình hoặc Space để bay
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreElement = document.getElementById('score');
+        const finalScoreElement = document.getElementById('finalScore');
+        const highScoreElement = document.getElementById('highScore');
+        const startScreen = document.getElementById('startScreen');
+        const gameOverScreen = document.getElementById('gameOverScreen');
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            
+            // Giảm độ phân giải trên mobile để tăng hiệu suất
+            if (window.innerWidth < 768) {
+                const scale = window.devicePixelRatio || 1;
+                canvas.width = window.innerWidth * 0.8;
+                canvas.height = window.innerHeight * 0.8;
+                canvas.style.width = window.innerWidth + 'px';
+                canvas.style.height = window.innerHeight + 'px';
+            }
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        let cat = {
+            x: 150,
+            y: canvas.height / 2,
+            width: 80,
+            height: 80,
+            velocity: 0,
+            gravity: 0.4,
+            jump: -10
+        };
+
+        let catImage = new Image();
+        catImage.src = 'meomeo.svg';
+
+        let pipes = [];
+        let explosions = [];
+        let smoke = [];
+        let clouds = [];
+        let score = 0;
+        let highScore = localStorage.getItem('flappyCatHighScore') || 0;
+        let gameRunning = false;
+        let gameLoop;
+        let frameCount = 0;
+
+        highScoreElement.textContent = highScore;
+
+        // Tạo mây ban đầu - ít hơn trên mobile
+        const cloudCount = window.innerWidth < 768 ? 4 : 8;
+        for (let i = 0; i < cloudCount; i++) {
+            clouds.push({
+                x: Math.random() * canvas.width,
+                y: Math.random() * canvas.height * 0.4,
+                width: 60 + Math.random() * 40,
+                height: 30 + Math.random() * 20,
+                speed: 0.3 + Math.random() * 0.5
+            });
+        }
+
+        canvas.addEventListener('click', jump);
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            if (!gameRunning && startScreen.style.display !== 'none') {
+                startGame();
+            } else {
+                jump();
+            }
+        });
+        
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') {
+                e.preventDefault();
+                if (!gameRunning && startScreen.style.display !== 'none') {
+                    startGame();
+                } else {
+                    jump();
+                }
+            }
+        });
+
+        function jump() {
+            if (gameRunning) {
+                cat.velocity = cat.jump;
+                createSmoke();
+            }
+        }
+
+        function startGame() {
+            startScreen.style.display = 'none';
+            gameOverScreen.style.display = 'none';
+            cat.y = canvas.height / 2;
+            cat.velocity = 0;
+            pipes = [];
+            explosions = [];
+            smoke = [];
+            score = 0;
+            frameCount = 0;
+            scoreElement.textContent = score;
+            gameRunning = true;
+            gameLoop = requestAnimationFrame(update);
+        }
+
+        function restartGame() {
+            startGame();
+        }
+
+        function update() {
+            if (!gameRunning) return;
+
+            frameCount++;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            drawBackground();
+
+            cat.velocity += cat.gravity;
+            cat.y += cat.velocity;
+
+            if (frameCount % 180 === 0) {
+                const gap = 280;
+                const minHeight = 80;
+                const maxHeight = canvas.height - gap - minHeight;
+                const pipeHeight = Math.floor(Math.random() * maxHeight) + minHeight;
+                
+                pipes.push({
+                    x: canvas.width,
+                    top: pipeHeight,
+                    bottom: pipeHeight + gap,
+                    width: 80,
+                    passed: false
+                });
+            }
+
+            for (let i = pipes.length - 1; i >= 0; i--) {
+                pipes[i].x -= 1.8;
+
+                drawPipe(pipes[i]);
+
+                if (!pipes[i].passed && pipes[i].x + pipes[i].width < cat.x) {
+                    pipes[i].passed = true;
+                    score++;
+                    scoreElement.textContent = score;
+                }
+
+                if (pipes[i].x + pipes[i].width < 0) {
+                    pipes.splice(i, 1);
+                }
+
+                if (checkCollision(cat, pipes[i])) {
+                    createExplosion(cat.x + cat.width / 2, cat.y + cat.height / 2);
+                    endGame();
+                    return;
+                }
+            }
+
+            if (cat.y + cat.height > canvas.height) {
+                cat.y = canvas.height - cat.height;
+                cat.velocity = 0;
+            }
+            if (cat.y < 0) {
+                cat.y = 0;
+                cat.velocity = 0;
+            }
+
+            updateExplosions();
+            updateSmoke();
+            drawExplosions();
+            drawSmoke();
+            drawCat();
+
+            gameLoop = requestAnimationFrame(update);
+        }
+
+        function createExplosion(x, y) {
+            // Giảm số lượng particle nổ trên mobile
+            const particleCount = window.innerWidth < 768 ? 15 : 30;
+            for (let i = 0; i < particleCount; i++) {
+                explosions.push({
+                    x: x,
+                    y: y,
+                    vx: (Math.random() - 0.5) * 10,
+                    vy: (Math.random() - 0.5) * 10,
+                    life: 60,
+                    maxLife: 60,
+                    size: Math.random() * 8 + 4,
+                    color: ['#FF6B6B', '#FFD93D', '#FF8C42', '#FFA500'][Math.floor(Math.random() * 4)]
+                });
+            }
+        }
+
+        function updateExplosions() {
+            for (let i = explosions.length - 1; i >= 0; i--) {
+                explosions[i].x += explosions[i].vx;
+                explosions[i].y += explosions[i].vy;
+                explosions[i].vy += 0.3;
+                explosions[i].life--;
+                
+                if (explosions[i].life <= 0) {
+                    explosions.splice(i, 1);
+                }
+            }
+        }
+
+        function drawExplosions() {
+            for (let explosion of explosions) {
+                ctx.save();
+                ctx.globalAlpha = explosion.life / explosion.maxLife;
+                ctx.fillStyle = explosion.color;
+                ctx.beginPath();
+                ctx.arc(explosion.x, explosion.y, explosion.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        function drawBackground() {
+            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            gradient.addColorStop(0, '#87CEEB');
+            gradient.addColorStop(1, '#E0F6FF');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Vẽ mây
+            drawClouds();
+        }
+
+        function drawClouds() {
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+            for (let cloud of clouds) {
+                // Di chuyển mây
+                cloud.x -= cloud.speed;
+                if (cloud.x + cloud.width < 0) {
+                    cloud.x = canvas.width;
+                    cloud.y = Math.random() * canvas.height * 0.4;
+                }
+
+                // Vẽ mây (3 hình tròn tạo thành mây)
+                ctx.beginPath();
+                ctx.arc(cloud.x, cloud.y, cloud.height * 0.6, 0, Math.PI * 2);
+                ctx.arc(cloud.x + cloud.width * 0.4, cloud.y - cloud.height * 0.2, cloud.height * 0.7, 0, Math.PI * 2);
+                ctx.arc(cloud.x + cloud.width * 0.7, cloud.y, cloud.height * 0.6, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        function createSmoke() {
+            // Giảm số lượng khói trên mobile
+            const smokeCount = window.innerWidth < 768 ? 3 : 5;
+            for (let i = 0; i < smokeCount; i++) {
+                smoke.push({
+                    x: cat.x - 10,
+                    y: cat.y + cat.height / 2 + (Math.random() - 0.5) * 20,
+                    vx: -2 - Math.random() * 2,
+                    vy: (Math.random() - 0.5) * 2,
+                    life: 30,
+                    maxLife: 30,
+                    size: 8 + Math.random() * 8
+                });
+            }
+        }
+
+        function updateSmoke() {
+            for (let i = smoke.length - 1; i >= 0; i--) {
+                smoke[i].x += smoke[i].vx;
+                smoke[i].y += smoke[i].vy;
+                smoke[i].life--;
+                smoke[i].size += 0.3;
+                
+                if (smoke[i].life <= 0) {
+                    smoke.splice(i, 1);
+                }
+            }
+        }
+
+        function drawSmoke() {
+            for (let s of smoke) {
+                ctx.save();
+                ctx.globalAlpha = (s.life / s.maxLife) * 0.5;
+                ctx.fillStyle = '#CCCCCC';
+                ctx.beginPath();
+                ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        function drawCat() {
+            ctx.save();
+            ctx.translate(cat.x + cat.width / 2, cat.y + cat.height / 2);
+            const rotation = Math.min(Math.max(cat.velocity * 0.05, -0.5), 0.5);
+            ctx.rotate(rotation);
+
+            ctx.drawImage(catImage, -cat.width / 2, -cat.height / 2, cat.width, cat.height);
+
+            ctx.restore();
+        }
+
+        function drawPipe(pipe) {
+            // Tòa nhà trên
+            drawBuilding(pipe.x, 0, pipe.width, pipe.top, pipe);
+            
+            // Tòa nhà dưới
+            drawBuilding(pipe.x, pipe.bottom, pipe.width, canvas.height - pipe.bottom, pipe);
+        }
+
+        function drawBuilding(x, y, width, height, pipe) {
+            // Thân tòa nhà
+            const gradient = ctx.createLinearGradient(x, y, x + width, y);
+            gradient.addColorStop(0, '#5D5D5D');
+            gradient.addColorStop(0.5, '#7D7D7D');
+            gradient.addColorStop(1, '#5D5D5D');
+            
+            ctx.fillStyle = gradient;
+            ctx.fillRect(x, y, width, height);
+
+            // Viền tòa nhà
+            ctx.strokeStyle = '#3D3D3D';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(x, y, width, height);
+
+            // Vẽ cửa sổ - ít hơn trên mobile để tăng hiệu suất
+            const isMobile = window.innerWidth < 768;
+            if (!isMobile || frameCount % 2 === 0) {
+                ctx.fillStyle = '#FFD93D';
+                const windowWidth = 8;
+                const windowHeight = 10;
+                const windowSpacingX = isMobile ? 20 : 15;
+                const windowSpacingY = isMobile ? 20 : 15;
+                
+                for (let wx = x + 10; wx < x + width - 10; wx += windowSpacingX) {
+                    for (let wy = y + 10; wy < y + height - 10; wy += windowSpacingY) {
+                        if (Math.random() > 0.3) {
+                            ctx.fillRect(wx, wy, windowWidth, windowHeight);
+                        }
+                    }
+                }
+            }
+
+            // Mái nhà
+            ctx.fillStyle = '#4D4D4D';
+            if (y === 0) {
+                ctx.fillRect(x - 5, pipe.top - 20, width + 10, 20);
+            } else {
+                ctx.fillRect(x - 5, y, width + 10, 20);
+            }
+        }
+
+        function checkCollision(cat, pipe) {
+            if (cat.x + cat.width > pipe.x && cat.x < pipe.x + pipe.width) {
+                if (cat.y < pipe.top || cat.y + cat.height > pipe.bottom) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        function endGame() {
+            gameRunning = false;
+            cancelAnimationFrame(gameLoop);
+            
+            if (score > highScore) {
+                highScore = score;
+                localStorage.setItem('flappyCatHighScore', highScore);
+                highScoreElement.textContent = highScore;
+            }
+            
+            finalScoreElement.textContent = score;
+            gameOverScreen.style.display = 'block';
+        }
+
+        catImage.onload = function() {
+            drawBackground();
+            drawCat();
+        };
+    </script>
+</body>
+</html>
