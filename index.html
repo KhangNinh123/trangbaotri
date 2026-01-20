@@ -239,6 +239,29 @@
         let fpsFrames = [];
         let lastFpsUpdate = 0;
 
+        // Audio context cho sound effects
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        
+        function playJumpSound() {
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            // Tạo âm thanh "phụt" - tần số giảm nhanh
+            oscillator.type = 'sine';
+            oscillator.frequency.setValueAtTime(400, audioContext.currentTime);
+            oscillator.frequency.exponentialRampToValueAtTime(100, audioContext.currentTime + 0.1);
+            
+            // Volume giảm dần
+            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+            
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.1);
+        }
+
         // Khai báo biến trước để tránh lỗi initialization
         let bgGradient = null;
         let buildingGradients = new Map();
@@ -341,6 +364,7 @@
             if (gameRunning) {
                 cat.velocity = cat.jump;
                 createSmoke();
+                playJumpSound();
             }
         }
 
