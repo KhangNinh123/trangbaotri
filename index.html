@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+    <!DOCTYPE html>
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
@@ -359,19 +359,20 @@
             
             // Tạo cột đầu tiên ngay lập tức
             const gap = 280;
-            const minHeight = 80;
-            const maxHeight = canvas.height - gap - minHeight;
-            const pipeHeight = Math.floor(Math.random() * maxHeight) + minHeight;
+            const minTopHeight = 100; // Tòa nhà trên tối thiểu 100px
+            const minBottomHeight = 150; // Tòa nhà dưới tối thiểu 150px
+            const maxTopHeight = canvas.height - gap - minBottomHeight;
+            const pipeHeight = Math.floor(Math.random() * (maxTopHeight - minTopHeight)) + minTopHeight;
             
             // Mobile: cột xa hơn để có thời gian chuẩn bị
             const isMobile = window.innerWidth < 768;
-            const startPosition = isMobile ? canvas.width * 0.85 : canvas.width * 0.75;
+            const startPosition = isMobile ? canvas.width * 1.2 : canvas.width * 0.75;
             
             pipes.push({
                 x: startPosition,
                 top: pipeHeight,
                 bottom: pipeHeight + gap,
-                width: 80,
+                width: 100, // Tăng từ 80 lên 100
                 passed: false
             });
             
@@ -415,15 +416,16 @@
 
             if (frameCount % 150 === 0) {
                 const gap = 280;
-                const minHeight = 80;
-                const maxHeight = canvas.height - gap - minHeight;
-                const pipeHeight = Math.floor(Math.random() * maxHeight) + minHeight;
+                const minTopHeight = 100; // Tòa nhà trên tối thiểu 100px
+                const minBottomHeight = 150; // Tòa nhà dưới tối thiểu 150px
+                const maxTopHeight = canvas.height - gap - minBottomHeight;
+                const pipeHeight = Math.floor(Math.random() * (maxTopHeight - minTopHeight)) + minTopHeight;
                 
                 pipes.push({
                     x: canvas.width,
                     top: pipeHeight,
                     bottom: pipeHeight + gap,
-                    width: 80,
+                    width: 100, // Tăng từ 80 lên 100
                     passed: false
                 });
             }
